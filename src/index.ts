@@ -192,6 +192,10 @@ async function handleCallAsync(
 
       userContexts.put(username, ctx);
 
+      for (const contact of ctx.userData.contacts) {
+        ctx.send('addContact', [contact]);
+      }
+
       for (const roomName of ctx.userData.joinedRooms) {
         for (const user of rooms.get(roomName).users) {
           ctx.send('joinRoom', { room: roomName, user });
@@ -214,42 +218,34 @@ async function handleCallAsync(
       break;
     }
 
-    // case 'addContact': {
-    //   const [contact] = params as [string];
+    case 'addContact': {
+      const [contact] = params as [string];
 
-    //   ctx.userData.contacts.add(contact);
+      ctx.userData.contacts.add(contact);
 
-    //   break;
-    // }
+      ctx.send('addContact', [contact]);
 
-    // case 'removeContact': {
-    //   const [contact] = params as [string];
+      break;
+    }
 
-    //   ctx.userData.contacts.delete(contact);
+    case 'removeContact': {
+      const [contact] = params as [string];
 
-    //   break;
-    // }
+      ctx.userData.contacts.delete(contact);
 
-    // case 'getContacts':
-    //   return [...ctx.userData.contacts];
+      ctx.send('removeContact', {
+        user: contact,
+      });
 
-    // case 'getJoinedRooms':
-    //   return [...ctx.userData.joinedRooms];
-
-    // case 'getRoomMessages': {
-    //   const [roomName] = params as [string];
-
-    //   return rooms.get(roomName).roomEvents; // TODO error on non-existent room
-    // }
-
-    // case 'getRoomUsers': {
-    //   const [roomName] = params as [string];
-
-    //   return [...rooms.get(roomName).users]; // TODO error on non-existent room
-    // }
+      break;
+    }
 
     case 'getRooms': {
       return [...rooms.keys()];
+    }
+
+    case 'getUsers': {
+      return [...userDataMap.keys()];
     }
 
     case 'joinRoom': {
