@@ -1,0 +1,34 @@
+{
+  "name": "nordlicht-chat-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node --enable-source-maps build/index.js",
+    "build": "tsc",
+    "watch": "concurrently -k -p \"[{name}]\" -n \"TypeScript,Node\" -c \"cyan.bold,green.bold\" \"npm run watch-ts\" \"npm run watch-node\"",
+    "watch-node": "env $(cat .env | grep -v \"#\" | xargs) nodemon --exec 'node --enable-source-maps build/index.js' | pino-pretty -t -i hostname,pid",
+    "watch-ts": "tsc -w"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "pino": "^5.16.0",
+    "ws": "^7.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^13.7.0",
+    "@types/pino": "^5.15.4",
+    "@types/ws": "^7.2.2",
+    "concurrently": "^5.1.0",
+    "nodemon": "^2.0.2",
+    "pino-pretty": "^3.5.0",
+    "prettier": "^1.19.1",
+    "typescript": "^3.7.5"
+  },
+  "prettier": {
+    "singleQuote": true,
+    "trailingComma": "all"
+  }
+}
