@@ -6,6 +6,7 @@
 1. Create `.env` file or setup your system environment variables (example):
    ```env
    SERVER_PORT=8080
+   WS_KEEPALIVE_PERIOD=30000
    ```
 1. Run `npm i`
 1. Run `npm watch` (dev mode)

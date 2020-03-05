@@ -37,7 +37,25 @@ const userContexts = createMultimap<string, Context>();
 
 const rooms = new Map<string, Room>();
 
+setInterval(() => {
+  wss.clients.forEach(function each(ws) {
+    if ((ws as any).isAlive === false) {
+      ws.terminate();
+    } else {
+      (ws as any).isAlive = false;
+      ws.ping(() => {});
+    }
+  });
+}, Number(getEnv('WS_KEEPALIVE_PERIOD', '30000')));
+
+function heartbeat() {
+  this.isAlive = true;
+}
+
 wss.on('connection', (ws: WebSocket) => {
+  (ws as any).isAlive = true;
+  ws.on('pong', heartbeat);
+
   const ctx: Context = {
     ws,
 
