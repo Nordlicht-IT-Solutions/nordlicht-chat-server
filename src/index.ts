@@ -184,8 +184,16 @@ async function handleCallAsync(
     //   return [...rooms.get(roomName).users]; // TODO error on non-existent room
     // }
 
+    case 'getRooms': {
+      return [...rooms.keys()];
+    }
+
     case 'joinRoom': {
       const [roomName] = params as [string];
+
+      if (ctx.userData.joinedRooms.has(roomName)) {
+        throw new Error('already joined');
+      }
 
       ctx.userData.joinedRooms.add(roomName);
 
