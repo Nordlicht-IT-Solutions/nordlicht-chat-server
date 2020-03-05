@@ -21,6 +21,16 @@ type Context = {
   ws: WebSocket;
 };
 
+class JsonRpcError extends Error {
+  code: number;
+
+  constructor(code: number, message: string) {
+    super(message);
+    this.name = 'JsonRpcError';
+    this.code = code;
+  }
+}
+
 const userDataMap = new Map<string, UserData>();
 
 const userContexts = createMultimap<string, Context>();
@@ -47,50 +57,86 @@ wss.on('connection', (ws: WebSocket) => {
       return;
     }
 
-    const data = JSON.parse(message);
+    let data: any;
+
+    try {
+      data = JSON.parse(message);
+    } catch {
+      ws.send(
+        JSON.stringify({
+          jsonrpc: '2.0',
+          id: null,
+          error: {
+            code: -32700,
+            message: 'Parse error',
+          },
+        }),
+      );
+
+      return;
+    }
 
     if (
-      data &&
-      typeof data === 'object' &&
-      data.jsonrpc === '2.0' &&
-      typeof data.method === 'string'
+      !data ||
+      typeof data !== 'object' ||
+      data.jsonrpc !== '2.0' ||
+      typeof data.method !== 'string' ||
+      !['array', 'object', 'undefined'].includes(typeof data.params) ||
+      data.params === null
     ) {
-      const callLogger = logger.child({ id: data.id, method: data.method });
-
-      callLogger.info('Handling JSON-RPC call');
-
-      handleCallAsync(ctx, data.method, data.params).then(
-        (result: any) => {
-          logger.info('Success.');
-
-          if ('id' in data) {
-            ws.send(
-              JSON.stringify({
-                jsonrpc: '2.0',
-                id: data.id,
-                result: result ?? null,
-              }),
-            );
-          }
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id: null,
+        error: {
+          code: -32600,
+          message: 'Invalid Request',
         },
-        (err: any) => {
-          logger.error({ err }, 'Error.');
+      });
 
-          if ('id' in data) {
-            ws.send(
-              JSON.stringify({
-                jsonrpc: '2.0',
-                id: data.id,
-                error: {
-                  code: err.code,
-                  message: err.message,
-                },
-              }),
-            );
-          }
-        },
-      );
+      return;
     }
+
+    const callLogger = logger.child({ id: data.id, method: data.method });
+
+    callLogger.info('Handling JSON-RPC call');
+
+    handleCallAsync(ctx, data.method, data.params).then(
+      (result: any) => {
+        logger.info('Success.');
+
+        if ('id' in data) {
+          ws.send(
+            JSON.stringify({
+              jsonrpc: '2.0',
+              id: data.id,
+              result: result ?? null,
+            }),
+          );
+        }
+      },
+      (err: any) => {
+        logger.error({ err }, 'Error.');
+
+        if ('id' in data) {
+          ws.send(
+            JSON.stringify({
+              jsonrpc: '2.0',
+              id: data.id,
+              error:
+                err instanceof JsonRpcError
+                  ? {
+                      code: err.code,
+                      message: err.message,
+                    }
+                  : {
+                      code: -32603,
+                      message: 'Internal error',
+                    },
+            }),
+          );
+        }
+      },
+    );
   });
 
   ws.on('close', () => {
@@ -106,13 +152,13 @@ async function handleCallAsync(
   params?: any[] | object,
 ): Promise<any> {
   if (method !== 'login' && !ctx.username) {
-    throw new Error('not logged in');
+    throw new JsonRpcError(1, 'Not logged in');
   }
 
   switch (method) {
     case 'login': {
       if (ctx.username) {
-        throw new Error('already logged in');
+        throw new JsonRpcError(2, 'Already logged in');
       }
 
       const [username] = params as [string];
@@ -192,7 +238,7 @@ async function handleCallAsync(
       const [roomName] = params as [string];
 
       if (ctx.userData.joinedRooms.has(roomName)) {
-        throw new Error('already joined');
+        throw new JsonRpcError(3, 'Already joined');
       }
 
       ctx.userData.joinedRooms.add(roomName);
@@ -224,11 +270,11 @@ async function handleCallAsync(
       const room = rooms.get(roomName);
 
       if (!room) {
-        throw new Error('no_such_room');
+        throw new JsonRpcError(4, 'No such room');
       }
 
       if (!room.users.has(ctx.username)) {
-        throw new Error('not_a_member');
+        throw new JsonRpcError(5, 'Not a member');
       }
 
       sendToRoomUsers(room, 'leaveRoom', {
@@ -268,13 +314,13 @@ async function handleCallAsync(
         const roomName = p.room;
 
         if (!ctx.userData.joinedRooms.has(roomName)) {
-          throw new Error('not_a_member');
+          throw new JsonRpcError(5, 'Not a member');
         }
 
         room = rooms.get(roomName);
 
         if (!room) {
-          throw new Error('no_such_room');
+          throw new JsonRpcError(4, 'No such room');
         }
       }
 
@@ -286,6 +332,9 @@ async function handleCallAsync(
 
       break;
     }
+
+    default:
+      throw new JsonRpcError(-32601, 'Method not found');
   }
 }
 
