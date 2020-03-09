@@ -1,5 +1,3 @@
-export type Multimap<K, V> = Map<K, Set<V>>;
-
 export function createMultimap<K, V>() {
   const map = new Map<K, Set<V>>();
 

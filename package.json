@@ -7,13 +7,14 @@
     "start": "node --enable-source-maps build/index.js",
     "build": "tsc",
     "watch": "concurrently -k -p \"[{name}]\" -n \"TypeScript,Node\" -c \"cyan.bold,green.bold\" \"npm run watch-ts\" \"npm run watch-node\"",
-    "watch-node": "env $(cat .env | grep -v \"#\" | xargs) nodemon --exec 'node --enable-source-maps build/index.js' | pino-pretty -t -i hostname,pid",
+    "watch-node": "env $(cat .env | grep -v \"#\" | xargs) nodemon --signal SIGTERM --exec 'node --enable-source-maps build/index.js' | pino-pretty -t -i hostname,pid",
     "watch-ts": "tsc -w"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "async-exit-hook": "2.0.1",
     "pino": "5.17.0",
     "ws": "7.2.1"
   },

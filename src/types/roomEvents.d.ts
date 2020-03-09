@@ -21,6 +21,6 @@ type RoomEvent = MessageRoomEvent | JoinRoomEvent | LeaveRoomEvent;
 
 type Room = {
   name: string;
-  users: Set<string>;
+  users: { [name: string]: true };
   roomEvents: RoomEvent[];
 };
