@@ -1,7 +1,7 @@
 import WebSocket = require('ws');
 import { getEnv } from './env';
 
-export function installHeartbeat(wss: WebSocket.Server) {
+export function installWsHeartbeat(wss: WebSocket.Server) {
   setInterval(() => {
     wss.clients.forEach(function each(ws) {
       if ((ws as any).isAlive === false) {

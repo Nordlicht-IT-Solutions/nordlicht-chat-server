@@ -3,7 +3,7 @@ import exitHook from 'async-exit-hook';
 import { promises as fs } from 'fs';
 import { getEnv } from './env';
 import { attachWsConnectionHandler } from './wsConnectionHandler';
-import { installHeartbeat } from './wsHeartbeat';
+import { installWsHeartbeat } from './wsHeartbeat';
 import { loadDb, currentDbVer } from './dbLoader';
 
 loadDb().then(({ rooms, userDataMap }) => {
@@ -11,7 +11,7 @@ loadDb().then(({ rooms, userDataMap }) => {
     port: Number(getEnv('SERVER_PORT', '8080')),
   });
 
-  installHeartbeat(wss);
+  installWsHeartbeat(wss);
 
   attachWsConnectionHandler(wss, rooms, userDataMap);
 
