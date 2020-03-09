@@ -18,9 +18,3 @@ interface LeaveRoomEvent extends BaseRoomEvent {
 }
 
 type RoomEvent = MessageRoomEvent | JoinRoomEvent | LeaveRoomEvent;
-
-type Room = {
-  name: string;
-  users: { [name: string]: true };
-  roomEvents: RoomEvent[];
-};

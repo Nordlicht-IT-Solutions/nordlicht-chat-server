@@ -1,28 +1,21 @@
-import { appLogger } from './logging';
-import { getEnv } from './env';
 import WebSocket from 'ws';
 import exitHook from 'async-exit-hook';
 import { promises as fs } from 'fs';
-import http from 'http';
-import { DbSchema as Db } from 'core';
-import { start } from './core';
+import { appLogger } from './logging';
+import { getEnv } from './env';
+import { attachWsConnectionHandler } from './wsConnectionHandler';
+import { installHeartbeat } from './wsHeartbeat';
 
 const logger = appLogger.child({ module: 'app' });
 
-const server = http.createServer();
-
-const wss = new WebSocket.Server({
-  noServer: true,
-});
-
-server.on('upgrade', (request, socket, head) => {
-  wss.handleUpgrade(request, socket, head, ws => {
-    wss.emit('connection', ws, request);
-  });
-});
-
 loadDb().then(({ rooms, userDataMap }) => {
-  start(wss, rooms, userDataMap);
+  const wss = new WebSocket.Server({
+    port: Number(getEnv('SERVER_PORT', '8080')),
+  });
+
+  installHeartbeat(wss);
+
+  attachWsConnectionHandler(wss, rooms, userDataMap);
 
   exitHook((callback: () => void) => {
     fs.writeFile(
@@ -34,11 +27,9 @@ loadDb().then(({ rooms, userDataMap }) => {
       }),
     ).finally(callback);
   });
-
-  server.listen(Number(getEnv('SERVER_PORT', '8080')));
 });
 
-async function loadDb(): Promise<Db> {
+async function loadDb(): Promise<DbSchema> {
   try {
     const data = (await fs.readFile('db.json', {
       encoding: 'UTF-8',
@@ -58,14 +49,3 @@ async function loadDb(): Promise<Db> {
     userDataMap: {},
   };
 }
-
-setInterval(() => {
-  wss.clients.forEach(function each(ws) {
-    if ((ws as any).isAlive === false) {
-      ws.terminate();
-    } else {
-      (ws as any).isAlive = false;
-      ws.ping(() => {});
-    }
-  });
-}, Number(getEnv('WS_KEEPALIVE_PERIOD', '30000')));

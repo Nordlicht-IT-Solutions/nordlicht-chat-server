@@ -1,4 +1,8 @@
-import WebSocket from 'ws';
+type Room = {
+  name: string;
+  users: { [name: string]: true };
+  roomEvents: RoomEvent[];
+};
 
 type Rooms = { [key: string]: Room };
 
@@ -17,5 +21,15 @@ type Context = {
   username?: string;
   userData?: UserData;
   send: (method: string, params: object) => void;
-  ws: WebSocket;
+  rooms: Rooms;
+  userDataMap: UserDataMap;
+  userContexts: Multimap<string, Context>;
+};
+
+type Multimap<K, V> = {
+  get(key: K): Set<V>;
+  has(key: K): void;
+  put(key: K, value: V): void;
+  deleteAll(key: K): void;
+  delete(key: K, value: V): void;
 };
