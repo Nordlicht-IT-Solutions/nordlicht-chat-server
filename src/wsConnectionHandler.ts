@@ -1,10 +1,7 @@
 import WebSocket from 'ws';
-import { appLogger } from './logging';
 import { createMultimap } from './multimap';
 import { createRpcHandler, JsonRpcError } from './rpc';
 import { handleCallAsync } from './callHandler';
-
-const logger = appLogger.child({ module: 'core' });
 
 export function attachWsConnectionHandler(
   wss: WebSocket.Server,
