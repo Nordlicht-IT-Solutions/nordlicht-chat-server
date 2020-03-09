@@ -10,7 +10,6 @@ const wss = new WebSocket.Server({
 });
 
 type UserData = {
-  contacts: Set<string>;
   joinedRooms: Set<string>;
 };
 
@@ -186,15 +185,11 @@ async function handleCallAsync(
       ctx.userData = userDataMap.get(username);
 
       if (!ctx.userData) {
-        ctx.userData = { contacts: new Set(), joinedRooms: new Set() };
+        ctx.userData = { joinedRooms: new Set() };
         userDataMap.set(username, ctx.userData);
       }
 
       userContexts.put(username, ctx);
-
-      for (const contact of ctx.userData.contacts) {
-        ctx.send('addContact', [contact]);
-      }
 
       for (const roomName of ctx.userData.joinedRooms) {
         for (const user of rooms.get(roomName).users) {
@@ -214,28 +209,6 @@ async function handleCallAsync(
 
       delete ctx.username;
       delete ctx.userData;
-
-      break;
-    }
-
-    case 'addContact': {
-      const [contact] = params as [string];
-
-      ctx.userData.contacts.add(contact);
-
-      ctx.send('addContact', [contact]);
-
-      break;
-    }
-
-    case 'removeContact': {
-      const [contact] = params as [string];
-
-      ctx.userData.contacts.delete(contact);
-
-      ctx.send('removeContact', {
-        user: contact,
-      });
 
       break;
     }
@@ -271,7 +244,9 @@ async function handleCallAsync(
         user: ctx.username,
       });
 
-      processRoomEvent(room, { type: 'join', sender: ctx.username });
+      if (!roomName.startsWith('!')) {
+        processRoomEvent(room, { type: 'join', sender: ctx.username });
+      }
 
       break;
     }
@@ -298,7 +273,9 @@ async function handleCallAsync(
 
       room.users.delete(ctx.username);
 
-      processRoomEvent(room, { type: 'leave', sender: ctx.username });
+      if (!roomName.startsWith('!')) {
+        processRoomEvent(room, { type: 'leave', sender: ctx.username });
+      }
 
       break;
     }
@@ -306,35 +283,65 @@ async function handleCallAsync(
     case 'sendMessage': {
       const p = params as {
         message: string;
-      } & ({ to: 'user'; user: string } | { to: 'room'; room: string });
+      } & { to: 'room'; room: string };
 
       let room: Room;
 
-      if (p.to === 'user') {
-        const roomName = '!' + [ctx.username, p.user].sort().join('!');
+      if (p.room.startsWith('!')) {
+        const toUserName = p.room.replace(`!${ctx.username}`, '').slice(1);
 
-        room = rooms.get(roomName);
+        room = rooms.get(p.room);
 
-        if (!room) {
-          room = {
-            users: new Set([ctx.username, p.user]),
-            roomEvents: [],
-            name: roomName,
-          };
+        // if (!room) {
+        //   room = {
+        //     users: new Set([ctx.username, toUserName]),
+        //     roomEvents: [],
+        //     name: p.room,
+        //   };
 
-          rooms.set(roomName, room);
+        //   rooms.set(p.room, room);
+
+        const userData = userDataMap.get(toUserName);
+
+        if (!userData) {
+          throw new JsonRpcError(6, 'No such user');
         }
+
+        if (!userData.joinedRooms.has(p.room)) {
+          userData.joinedRooms.add(p.room);
+
+          let room = rooms.get(p.room);
+
+          if (!room) {
+            room = { users: new Set(), roomEvents: [], name: p.room };
+            rooms.set(p.room, room);
+          }
+
+          // room.users.add(ctx.username);
+          room.users.add(toUserName);
+
+          // sendToRoomUsers(room, 'joinRoom', {
+          //   room: room.name,
+          //   user: ctx.username,
+          // });
+
+          sendToRoomUsers(room, 'joinRoom', {
+            room: p.room,
+            user: ctx.username,
+          });
+
+          // processRoomEvent(room, { type: 'join', sender: ctx.username });
+        }
+        // }
       } else {
+        if (!room) {
+          throw new JsonRpcError(4, 'No such room');
+        }
+
         const roomName = p.room;
 
         if (!ctx.userData.joinedRooms.has(roomName)) {
           throw new JsonRpcError(5, 'Not a member');
-        }
-
-        room = rooms.get(roomName);
-
-        if (!room) {
-          throw new JsonRpcError(4, 'No such room');
         }
       }
 
