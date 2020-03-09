@@ -1,12 +1,10 @@
 import WebSocket from 'ws';
 import exitHook from 'async-exit-hook';
 import { promises as fs } from 'fs';
-import { appLogger } from './logging';
 import { getEnv } from './env';
 import { attachWsConnectionHandler } from './wsConnectionHandler';
 import { installHeartbeat } from './wsHeartbeat';
-
-const logger = appLogger.child({ module: 'app' });
+import { loadDb, currentDbVer } from './dbLoader';
 
 loadDb().then(({ rooms, userDataMap }) => {
   const wss = new WebSocket.Server({
@@ -21,31 +19,10 @@ loadDb().then(({ rooms, userDataMap }) => {
     fs.writeFile(
       'db.json',
       JSON.stringify({
-        version: 1,
+        version: currentDbVer,
         rooms,
         userDataMap,
       }),
     ).finally(callback);
   });
 });
-
-async function loadDb(): Promise<DbSchema> {
-  try {
-    const data = (await fs.readFile('db.json', {
-      encoding: 'UTF-8',
-    })) as string;
-
-    const value = JSON.parse(data);
-
-    if (value && typeof value === 'object' && value.version === 1) {
-      return value;
-    }
-  } catch (err) {
-    logger.warn({ err }, 'Error loading store.');
-  }
-
-  return {
-    rooms: {},
-    userDataMap: {},
-  };
-}

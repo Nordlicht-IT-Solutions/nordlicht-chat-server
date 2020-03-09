@@ -1,6 +1,6 @@
 import { JsonRpcError } from './rpc';
 
-let roomEventId = 0;
+let roomEventId = Date.now() - 1583791699098;
 
 export async function handleCallAsync(
   ctx: Context,
