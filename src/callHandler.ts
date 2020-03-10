@@ -84,11 +84,17 @@ export async function handleCallAsync(
 
       room.users[ctx.username] = true;
 
-      sendToRoomUsers(room, 'joinRoom', {
-        room: room.name,
-        user: ctx.username,
-        lastRead,
-      });
+      for (const user in ctx.rooms[roomName].users) {
+        ctx.send('joinRoom', {
+          room: roomName,
+          user,
+          lastRead: ctx.userData.joinedRooms[roomName].lastRead,
+        });
+      }
+
+      for (const roomEvent of ctx.rooms[roomName].roomEvents) {
+        ctx.send('roomEvent', { room: roomName, ...roomEvent });
+      }
 
       if (!roomName.startsWith('!')) {
         processRoomEvent(room, { type: 'join', sender: ctx.username });
