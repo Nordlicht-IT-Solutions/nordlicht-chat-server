@@ -173,6 +173,8 @@ export async function handleCallAsync(
         }
         // }
       } else {
+        room = ctx.rooms[p.room];
+
         if (!room) {
           throw new JsonRpcError(4, 'No such room');
         }
