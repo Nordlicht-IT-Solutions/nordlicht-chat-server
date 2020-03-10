@@ -122,7 +122,8 @@ export async function handleCallAsync(
     case 'sendMessage': {
       const p = params as {
         message: string;
-      } & { to: 'room'; room: string };
+        room: string;
+      };
 
       let room: Room;
 
