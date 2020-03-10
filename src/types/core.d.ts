@@ -14,7 +14,7 @@ type DbSchema = {
 };
 
 type UserData = {
-  joinedRooms: { [room: string]: true };
+  joinedRooms: { [room: string]: { lastRead?: number } };
 };
 
 type Context = {

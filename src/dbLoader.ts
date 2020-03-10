@@ -3,7 +3,7 @@ import { appLogger } from './logging';
 
 const logger = appLogger.child({ module: 'dbLoader' });
 
-export const currentDbVer = 2;
+export const currentDbVer = 3;
 
 export async function loadDb(): Promise<DbSchema> {
   try {

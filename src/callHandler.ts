@@ -32,7 +32,11 @@ export async function handleCallAsync(
 
       for (const roomName in ctx.userData.joinedRooms) {
         for (const user in ctx.rooms[roomName].users) {
-          ctx.send('joinRoom', { room: roomName, user });
+          ctx.send('joinRoom', {
+            room: roomName,
+            user,
+            lastRead: ctx.userData.joinedRooms[roomName].lastRead,
+          });
         }
 
         for (const roomEvent of ctx.rooms[roomName].roomEvents) {
@@ -67,7 +71,9 @@ export async function handleCallAsync(
         throw new JsonRpcError(3, 'Already joined');
       }
 
-      ctx.userData.joinedRooms[roomName] = true;
+      const lastRead = Date.now();
+
+      ctx.userData.joinedRooms[roomName] = { lastRead };
 
       let room = ctx.rooms[roomName];
 
@@ -81,6 +87,7 @@ export async function handleCallAsync(
       sendToRoomUsers(room, 'joinRoom', {
         room: room.name,
         user: ctx.username,
+        lastRead,
       });
 
       if (!roomName.startsWith('!')) {
@@ -148,7 +155,9 @@ export async function handleCallAsync(
         }
 
         if (!(p.room in userData.joinedRooms)) {
-          userData.joinedRooms[p.room] = true;
+          const lastRead = Date.now() - 1;
+
+          userData.joinedRooms[p.room] = { lastRead };
 
           let room = ctx.rooms[p.room];
 
@@ -168,6 +177,7 @@ export async function handleCallAsync(
           sendToRoomUsers(room, 'joinRoom', {
             room: p.room,
             user: ctx.username,
+            lastRead,
           });
 
           // processRoomEvent(room, { type: 'join', sender: ctx.username });
@@ -191,6 +201,30 @@ export async function handleCallAsync(
         type: 'message',
         sender: ctx.username,
         message: p.message,
+      });
+
+      break;
+    }
+
+    case 'setRoomLastRead': {
+      const p = params as {
+        room: string;
+        lastRead?: number;
+      };
+
+      const joinedRoom = ctx.userData.joinedRooms[p.room];
+
+      const room = ctx.rooms[p.room];
+
+      if (!joinedRoom || !room) {
+        throw new JsonRpcError(5, 'Not a member');
+      }
+
+      joinedRoom.lastRead = p.lastRead ?? Date.now();
+
+      ctx.send('lastRead', {
+        room: p.room,
+        lastRead: joinedRoom.lastRead,
       });
 
       break;

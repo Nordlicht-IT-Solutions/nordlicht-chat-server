@@ -8,6 +8,7 @@ import { loadDb, currentDbVer } from './dbLoader';
 
 loadDb().then(({ rooms, userDataMap }) => {
   const wss = new WebSocket.Server({
+    path: '/chat',
     port: Number(getEnv('SERVER_PORT', '8080')),
   });
 
